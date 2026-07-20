@@ -354,6 +354,31 @@
     color: var(--color-stamp);
   }
 
+  /* ---------- Разворачиваемая бухгалтерия ---------- */
+
+  .swat-details > summary {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--color-stamp);
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+  }
+
+  .swat-details > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .swat-details > summary::before {
+    content: "[+] ";
+  }
+
+  .swat-details[open] > summary::before {
+    content: "[−] ";
+  }
+
   /* ---------- Предупреждения ---------- */
 
   .swat-flag {

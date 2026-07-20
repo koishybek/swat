@@ -4,22 +4,22 @@ import { WaitlistForm } from "@/components/WaitlistForm";
 import { formatUsd } from "@/lib/earnings";
 import { rankScenarios, REALISTIC_SEASON_WEEKS } from "@/lib/scenarios";
 
-const TIER_LABEL = {
-  target: null,
-  second: "второй эшелон",
-  trap: "ловушка",
-} as const;
-
-const NAV = [
-  { href: "#costs", label: "Как читать расчёт" },
-  { href: "#directions", label: "Направления" },
-  { href: "#process", label: "Как мы работаем" },
-];
+/**
+ * Короткие причины для «куда не повезём» — копирайт уровня страницы.
+ * Длинные обоснования живут в данных сценариев и в брифинге.
+ */
+const TRAP_REASON: Record<string, string> = {
+  "Cape Cod": "негде жить — в 2022-м отсюда вывезли 3 000 студентов",
+  "Estes Park": "летом работы мало, а жильё дороже, чем ты заработаешь",
+  "Bar Harbor": "дорогое жильё и самый жадный налог штата — сезон в минус",
+};
 
 export default function HomePage() {
   const ranked = rankScenarios();
-  const profitableWithOneJob = ranked.filter((r) => r.oneJob.netHome > 0).length;
-  const bestGain = ranked.reduce((max, r) => Math.max(max, r.secondJobGain), 0);
+  const best = ranked[0]!;
+  const targets = ranked.filter((r) => r.scenario.tier === "target").slice(0, 5);
+  const traps = ranked.filter((r) => r.scenario.tier === "trap");
+  const profitableOneJob = ranked.filter((r) => r.oneJob.netHome > 0).length;
 
   return (
     <>
@@ -28,25 +28,26 @@ export default function HomePage() {
           <a href="#top" aria-label="SWAT — на главную">
             <Logo height={40} />
           </a>
-          <nav className="hidden items-center gap-9 lg:flex">
-            {NAV.map((item) => (
-              <a key={item.href} href={item.href} className="swat-nav-link">
-                {item.label}
-              </a>
-            ))}
+          <nav className="hidden items-center gap-9 sm:flex">
+            <a href="#calc" className="swat-nav-link">
+              Расчёт
+            </a>
+            <a href="#directions" className="swat-nav-link">
+              Направления
+            </a>
           </nav>
           <a href="#waitlist" className="swat-button shrink-0">
-            Начать
+            В список
           </a>
         </div>
         <div className="border-t border-[var(--color-ink)]" />
       </header>
 
       <main id="top">
-        {/* Герой: тезис слева, живой документ справа */}
-        <section className="mx-auto max-w-[86rem] px-6 pb-20 pt-12 lg:px-10 lg:pt-16">
-          <div className="grid gap-14 lg:grid-cols-[1fr_1.02fr] lg:items-start lg:gap-16">
-            <div className="lg:sticky lg:top-10">
+        {/* Герой: тезис + удар в три строки. Без бухгалтерии. */}
+        <section className="mx-auto max-w-[86rem] px-6 pb-20 pt-12 lg:px-10 lg:pt-20">
+          <div className="grid gap-12 lg:grid-cols-[1.1fr_1fr] lg:items-center lg:gap-20">
+            <div>
               <h1 className="swat-display">
                 Одна
                 <br />
@@ -55,326 +56,258 @@ export default function HomePage() {
                 <span style={{ color: "var(--color-void)" }}>это ноль.</span>
               </h1>
 
-              <div className="mt-8 max-w-md space-y-4 text-[1.02rem] leading-relaxed text-[var(--color-ink-soft)]">
-                <p>
-                  Мы показываем реальные числа за твоей зарплатой на Work and
-                  Travel — до того, как ты купишь билет.
-                </p>
-                <p>
-                  Посчитай сезон, разбери каждое удержание и увидь, сколько
-                  останется на руках. Иногда расчёт говорит, что ехать не надо.
-                  Мы всё равно его показываем.
-                </p>
-              </div>
+              <p className="mt-7 max-w-md text-[1.05rem] leading-relaxed text-[var(--color-ink-soft)]">
+                Ставка $15 звучит неплохо — пока из неё не вычли жильё, еду,
+                налоги и билет. С одной работой лето выходит в ноль.
+              </p>
+              <p className="mt-3 max-w-md text-[1.05rem] leading-relaxed">
+                Поэтому мы оформляем вторую — легально, через спонсора, до
+                вылета. Она и есть твой заработок.
+              </p>
 
-              <div className="mt-10 max-w-md border-t border-[var(--color-rule)] pt-6">
-                <dl className="grid grid-cols-2 items-end">
-                  <div className="pr-6">
-                    <dt className="swat-caption">С одной работой</dt>
-                    <dd className="swat-num mt-2 text-[1.9rem] font-medium leading-none">
-                      {profitableWithOneJob} из {ranked.length}
-                    </dd>
-                  </div>
-                  <div className="border-l border-[var(--color-rule)] pl-6">
-                    <dt className="swat-caption">Вторая работа даёт</dt>
-                    <dd
-                      className="swat-num mt-2 text-[1.9rem] font-medium leading-none"
-                      style={{ color: "var(--color-stamp)" }}
-                    >
-                      +{formatUsd(bestGain)}
-                    </dd>
-                  </div>
-                </dl>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <a href="#waitlist" className="swat-button swat-button--solid">
+                  Хочу на лето 2027
+                </a>
+                <a href="#calc" className="swat-button">
+                  Посчитать сезон
+                </a>
               </div>
             </div>
 
-            <SeasonCalculator />
+            {/* Весь питч в четырёх строках. */}
+            <div className="swat-stub px-6 py-8 sm:px-8">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                <span className="swat-caption" style={{ color: "var(--color-ink)" }}>
+                  {best.scenario.town}, {best.scenario.stateCode}
+                </span>
+                <span className="swat-caption" style={{ color: "var(--color-ink)" }}>
+                  {REALISTIC_SEASON_WEEKS} недель
+                </span>
+              </div>
+
+              <div className="mt-5">
+                <div className="swat-row">
+                  <span className="swat-row__label">Одна работа</span>
+                  <span className="swat-row__leader" aria-hidden="true" />
+                  <span
+                    className="swat-row__amount"
+                    style={{ color: "var(--color-void)" }}
+                  >
+                    {formatUsd(best.oneJob.netHome)}
+                  </span>
+                </div>
+                <div className="swat-row">
+                  <span className="swat-row__label">Плюс вторая работа</span>
+                  <span className="swat-row__leader" aria-hidden="true" />
+                  <span
+                    className="swat-row__amount"
+                    style={{ color: "var(--color-stamp)", fontWeight: 700 }}
+                  >
+                    +{formatUsd(best.secondJobGain)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="swat-total mt-5">
+                <span className="swat-total__label">На руки домой</span>
+                <span className="swat-total__value">
+                  {formatUsd(best.twoJobs.netHome)}
+                </span>
+              </div>
+
+              <p className="swat-note mt-4">
+                Уже с вычетом налогов, жилья, программы и билета из Алматы.
+              </p>
+            </div>
           </div>
+
+          {/* Три числа вместо четырёх абзацев. */}
+          <dl className="mt-16 grid gap-8 border-t border-[var(--color-rule)] pt-8 sm:grid-cols-3">
+            <div>
+              <dd className="swat-num text-[1.9rem] font-medium leading-none">
+                {profitableOneJob} из {ranked.length}
+              </dd>
+              <dt className="mt-2 text-[0.9rem] text-[var(--color-ink-soft)]">
+                курортов окупаются, если работа одна
+              </dt>
+            </div>
+            <div>
+              <dd
+                className="swat-num text-[1.9rem] font-medium leading-none"
+                style={{ color: "var(--color-stamp)" }}
+              >
+                +{formatUsd(best.secondJobGain)}
+              </dd>
+              <dt className="mt-2 text-[0.9rem] text-[var(--color-ink-soft)]">
+                добавляет вторая работа за тот же сезон
+              </dt>
+            </div>
+            <div>
+              <dd className="swat-num text-[1.9rem] font-medium leading-none">
+                {REALISTIC_SEASON_WEEKS} недель
+              </dd>
+              <dt className="mt-2 text-[0.9rem] text-[var(--color-ink-soft)]">
+                реальный сезон студента из Казахстана, не 16
+              </dt>
+            </div>
+          </dl>
         </section>
 
-        {/* Что съедает сезон */}
+        {/* Калькулятор — для тех, кто не верит на слово. */}
         <section
-          id="costs"
+          id="calc"
           className="border-y border-[var(--color-ink)] bg-[var(--color-paper-deep)]"
         >
           <div className="mx-auto max-w-[86rem] px-6 py-20 lg:px-10">
-            <h2 className="swat-h2 max-w-3xl">
-              Ставка — это не зарплата.
-              <br />
-              Это только первая строка.
-            </h2>
-            <div className="mt-12 grid gap-x-10 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
-              {[
-                {
-                  title: "Вторая работа",
-                  body: "Единственный рычаг, который меняет исход на тысячи, а не на сотни. Но она обязана быть проверена спонсором до первой смены: работа на неоформленном месте — основание для отчисления с программы.",
-                },
-                {
-                  title: "Недели",
-                  body: `Окно Казахстана — с 8 мая по 1 сентября, но участник ограничен длительностью своих каникул. Реалистично это ${REALISTIC_SEASON_WEEKS} рабочих недель, а не 16. Считай по своему учебному календарю.`,
-                },
-                {
-                  title: "Жильё",
-                  body: "Главная статья расходов, от $105 до $210 в неделю. Если жильё съедает больше 35% дохода, сезон работает на арендодателя. На Кейп-Коде дело доходило до того, что студентам просто негде было жить.",
-                },
-                {
-                  title: "Налоги",
-                  body: "FICA (7.65%) не удерживается — это льгота статуса J-1. Чаевые и надбавки за переработку выведены из-под федерального налога до 2028 года. А вот стандартного вычета у нерезидента нет.",
-                },
-              ].map((item) => (
-                <div key={item.title}>
-                  <h3 className="text-[1.1rem] font-semibold">{item.title}</h3>
-                  <p className="mt-2.5 text-[0.9rem] leading-relaxed text-[var(--color-ink-soft)]">
-                    {item.body}
-                  </p>
-                </div>
-              ))}
+            <div className="grid gap-12 lg:grid-cols-[1fr_1.05fr] lg:items-start lg:gap-20">
+              <div className="lg:sticky lg:top-10">
+                <h2 className="swat-h2">
+                  Не веришь —
+                  <br />
+                  посчитай
+                </h2>
+                <p className="mt-6 max-w-md leading-relaxed text-[var(--color-ink-soft)]">
+                  Двигай ползунки. Формулы те же, по которым мы считаем офферы:
+                  налоги каждого штата, переработки, льготы J-1.
+                </p>
+                <p className="mt-3 max-w-md leading-relaxed text-[var(--color-ink-soft)]">
+                  Если расчёт уходит в минус — мы так и скажем. Отговорить от
+                  плохого оффера — тоже наша работа.
+                </p>
+              </div>
+              <SeasonCalculator />
             </div>
           </div>
         </section>
 
-        {/* Рейтинг направлений */}
+        {/* Куда везём и куда нет */}
         <section
           id="directions"
           className="mx-auto max-w-[86rem] px-6 py-20 lg:px-10"
         >
-          <h2 className="swat-h2 max-w-3xl">
-            Направления, отсортированные
-            <br />
-            по остатку на руках
-          </h2>
-          <p className="mt-6 max-w-2xl leading-relaxed text-[var(--color-ink-soft)]">
-            Типовая работа, типовое жильё, {REALISTIC_SEASON_WEEKS} рабочих
-            недель. Вычтено всё, включая перелёт из Алматы, визовые сборы и
-            стоимость программы. Слева — то, что получают почти все. Справа —
-            то же место с двумя одобренными работами.
+          <h2 className="swat-h2 max-w-3xl">Куда везём — и куда нет</h2>
+          <p className="mt-6 max-w-xl leading-relaxed text-[var(--color-ink-soft)]">
+            Считаем по остатку на руках, а не по красоте пляжа. Поэтому список
+            короткий.
           </p>
 
-          {/* Мобильная раскладка: итог не должен прятаться за скроллом. */}
-          <ul className="mt-12 grid gap-3 lg:hidden">
-            {ranked.map((row, i) => {
-              const loss = row.twoJobs.netHome < 0;
-              const oneLoss = row.oneJob.netHome <= 0;
-              const tier = TIER_LABEL[row.scenario.tier];
-              return (
-                <li
-                  key={`${row.scenario.stateCode}-${row.scenario.town}`}
-                  className="border px-4 py-3.5"
-                  style={{
-                    borderColor:
-                      loss || row.scenario.tier === "trap"
-                        ? "var(--color-void)"
-                        : "var(--color-ink)",
-                  }}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
+          <div className="mt-12 grid gap-12 lg:grid-cols-[1.2fr_1fr] lg:gap-20">
+            <div>
+              <p className="swat-section mb-5">Куда везём</p>
+              <ul>
+                {targets.map((row, i) => (
+                  <li
+                    key={row.scenario.town}
+                    className="flex items-baseline gap-4 border-b border-[var(--color-rule)] py-4"
+                  >
+                    <span className="swat-num text-[var(--color-ink-faint)]">
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                    <div className="min-w-0 flex-1">
                       <p className="font-medium">
-                        <span className="swat-num text-[var(--color-ink-faint)]">
-                          {String(i + 1).padStart(2, "0")}
-                        </span>{" "}
                         {row.scenario.town}, {row.scenario.stateCode}
                       </p>
                       <p className="mt-0.5 text-[0.8rem] text-[var(--color-ink-faint)]">
                         {row.scenario.role}
-                        {tier && (
-                          <span
-                            className="uppercase"
-                            style={{ color: "var(--color-void)" }}
-                          >
-                            {" · "}
-                            {tier}
-                          </span>
-                        )}
                       </p>
                     </div>
                     <div className="shrink-0 text-right">
-                      <span
-                        className="swat-num block text-[1.3rem] font-bold leading-none"
-                        style={loss ? { color: "var(--color-void)" } : undefined}
-                      >
+                      <span className="swat-num block text-[1.25rem] font-bold leading-none">
                         {formatUsd(row.twoJobs.netHome)}
                       </span>
-                      <span className="swat-caption">с двумя</span>
+                      <span className="swat-caption">с двумя работами</span>
                     </div>
-                  </div>
-                  <p className="swat-caption mt-2 flex flex-wrap gap-x-3">
-                    <span style={oneLoss ? { color: "var(--color-void)" } : undefined}>
-                      одна работа · {formatUsd(row.oneJob.netHome)}
-                    </span>
-                    {row.secondJobGain > 0 && (
-                      <span style={{ color: "var(--color-stamp)" }}>
-                        вторая · +{formatUsd(row.secondJobGain)}
-                      </span>
-                    )}
-                  </p>
-                </li>
-              );
-            })}
-          </ul>
+                  </li>
+                ))}
+              </ul>
+              <p className="swat-note mt-4">
+                Ещё {ranked.length - targets.length - traps.length} направления —
+                в калькуляторе выше. Числа предварительные, до сверки с
+                работодателем.
+              </p>
+            </div>
 
-          <div className="mt-12 hidden overflow-x-auto lg:block">
-            <table className="w-full min-w-[52rem] border-collapse text-left">
-              <thead>
-                <tr className="border-b border-[var(--color-ink)]">
-                  <th className="swat-caption py-3 pr-4">Место</th>
-                  <th className="swat-caption py-3 pr-4">Направление</th>
-                  <th className="swat-caption py-3 pr-4 text-right">Ставка</th>
-                  <th className="swat-caption py-3 pr-4 text-right">
-                    Одна работа
-                  </th>
-                  <th className="swat-caption py-3 pr-4 text-right">
-                    Вторая даёт
-                  </th>
-                  <th className="swat-caption py-3 text-right">Итого с двумя</th>
-                </tr>
-              </thead>
-              <tbody>
-                {ranked.map((row, i) => {
-                  const loss = row.twoJobs.netHome < 0;
-                  const oneLoss = row.oneJob.netHome <= 0;
-                  const tier = TIER_LABEL[row.scenario.tier];
-                  return (
-                    <tr
-                      key={`${row.scenario.stateCode}-${row.scenario.town}`}
-                      className="border-b border-[var(--color-rule)]"
-                    >
-                      <td className="swat-num py-4 pr-4 text-[var(--color-ink-faint)]">
-                        {String(i + 1).padStart(2, "0")}
-                      </td>
-                      <td className="py-4 pr-4">
-                        <span className="font-medium">
-                          {row.scenario.town}, {row.scenario.stateCode}
-                        </span>
-                        <span className="block text-[0.8rem] text-[var(--color-ink-faint)]">
-                          {row.scenario.role}
-                          {!row.hasStateIncomeTax && " · нет налога штата"}
-                          {tier && (
-                            <span
-                              className="uppercase"
-                              style={{ color: "var(--color-void)" }}
-                            >
-                              {" · "}
-                              {tier}
-                            </span>
-                          )}
-                        </span>
-                      </td>
-                      <td className="swat-num py-4 pr-4 text-right">
-                        ${row.scenario.hourlyWage.toFixed(2)}
-                      </td>
-                      <td
-                        className="swat-num py-4 pr-4 text-right"
-                        style={{
-                          color: oneLoss
-                            ? "var(--color-void)"
-                            : "var(--color-ink-soft)",
-                        }}
-                      >
-                        {formatUsd(row.oneJob.netHome)}
-                      </td>
-                      <td
-                        className="swat-num py-4 pr-4 text-right"
-                        style={{
-                          color:
-                            row.secondJobGain > 0
-                              ? "var(--color-stamp)"
-                              : "var(--color-ink-faint)",
-                        }}
-                      >
-                        {row.secondJobGain > 0
-                          ? `+${formatUsd(row.secondJobGain)}`
-                          : "нет"}
-                      </td>
-                      <td
-                        className="swat-num py-4 text-right text-[1.05rem] font-bold"
-                        style={loss ? { color: "var(--color-void)" } : undefined}
-                      >
-                        {formatUsd(row.twoJobs.netHome)}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          <p className="swat-note mt-6 max-w-2xl">
-            Предварительные оценки на основе типовых условий. Каждое число
-            заменяется подтверждённым после сверки с работодателем. «Ловушка» —
-            направление, где остаток съедают жильё, короткий сезон или
-            отсутствие второй работы.
-          </p>
-        </section>
-
-        {/* Обещания */}
-        <section
-          id="process"
-          className="border-y border-[var(--color-ink)] bg-[var(--color-stub)]"
-        >
-          <div className="mx-auto max-w-[86rem] px-6 py-20 lg:px-10">
-            <h2 className="swat-h2 max-w-3xl">
-              Что мы обещаем и чего не обещаем
-            </h2>
-            <div className="mt-12 grid gap-12 lg:grid-cols-2">
-              <div>
-                <p className="swat-section mb-5">Обещаем</p>
-                <ul className="grid gap-4">
-                  {[
-                    "Показать расчёт до оплаты — включая направления, от которых отговариваем.",
-                    "Оформить вторую работу заранее и через спонсора, чтобы она была законной.",
-                    "Назвать спонсора и дать проверить его в официальном реестре BridgeUSA.",
-                    "Опубликованную в долларах политику возврата, если визу не дадут.",
-                    "Подписанный оффер с названием работодателя и городом до финального платежа.",
-                  ].map((item) => (
-                    <li
-                      key={item}
-                      className="flex gap-3 text-[0.95rem] leading-relaxed"
-                    >
+            <div>
+              <p className="swat-section mb-5" style={{ color: "var(--color-void)" }}>
+                Куда не повезём
+              </p>
+              <ul className="grid gap-4">
+                {traps.map((row) => (
+                  <li
+                    key={row.scenario.town}
+                    className="border-l-2 py-1 pl-4"
+                    style={{ borderColor: "var(--color-void)" }}
+                  >
+                    <p className="font-medium">
+                      {row.scenario.town}, {row.scenario.stateCode}
                       <span
-                        className="swat-num shrink-0"
-                        style={{ color: "var(--color-stamp)" }}
-                        aria-hidden="true"
-                      >
-                        [+]
-                      </span>
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <p className="swat-section mb-5" style={{ color: "var(--color-void)" }}>
-                  Не обещаем
-                </p>
-                <ul className="grid gap-4">
-                  {[
-                    "Гарантию визы. Решение принимает консул, и никто на него не влияет.",
-                    "Запись на собеседование в срок. Мощность консульства ограничена не нами.",
-                    "Конкретную сумму заработка. Гарантировать можно часы в оффере, а не чаевые.",
-                    "Самую низкую цену на рынке. Дёшево обычно значит, что за оффер платит кто-то другой.",
-                  ].map((item) => (
-                    <li
-                      key={item}
-                      className="flex gap-3 text-[0.95rem] leading-relaxed"
-                    >
-                      <span
-                        className="swat-num shrink-0"
+                        className="swat-num ml-2 text-[0.85rem] font-normal"
                         style={{ color: "var(--color-void)" }}
-                        aria-hidden="true"
                       >
-                        [−]
+                        {formatUsd(Math.min(row.oneJob.netHome, row.twoJobs.netHome))}
                       </span>
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+                    </p>
+                    <p className="mt-1 text-[0.875rem] leading-relaxed text-[var(--color-ink-soft)]">
+                      {TRAP_REASON[row.scenario.town] ?? row.scenario.tierNote}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+              <p className="swat-note mt-5">
+                Другие агентства продают и эти направления. Мы — нет.
+              </p>
             </div>
           </div>
         </section>
 
-        {/* Лист ожидания */}
+        {/* Правила */}
+        <section className="border-y border-[var(--color-ink)] bg-[var(--color-stub)]">
+          <div className="mx-auto max-w-[86rem] px-6 py-20 lg:px-10">
+            <h2 className="swat-h2 max-w-3xl">Что обещаем — и чего нет</h2>
+            <div className="mt-12 grid gap-12 lg:grid-cols-2">
+              <ul className="grid gap-4">
+                {[
+                  "Расчёт до оплаты. Даже когда он говорит «не езжай».",
+                  "Вторая работа оформлена до вылета — через спонсора.",
+                  "Имя спонсора сразу. Проверяй его в реестре BridgeUSA.",
+                  "Не дали визу — возврат в долларах, сумма в договоре.",
+                ].map((item) => (
+                  <li key={item} className="flex gap-3 leading-relaxed">
+                    <span
+                      className="swat-num shrink-0"
+                      style={{ color: "var(--color-stamp)" }}
+                      aria-hidden="true"
+                    >
+                      [+]
+                    </span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+              <ul className="grid gap-4">
+                {[
+                  "Гарантию визы не обещаем. Её не даёт никто.",
+                  "Сумму заработка не обещаем. Гарантируют часы, не чаевые.",
+                  "Самую низкую цену не обещаем. Дёшево — значит, за оффер платит кто-то другой.",
+                ].map((item) => (
+                  <li key={item} className="flex gap-3 leading-relaxed">
+                    <span
+                      className="swat-num shrink-0"
+                      style={{ color: "var(--color-void)" }}
+                      aria-hidden="true"
+                    >
+                      [−]
+                    </span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        {/* Форма */}
         <section
           id="waitlist"
           className="mx-auto max-w-[86rem] px-6 py-20 lg:px-10"
@@ -382,19 +315,17 @@ export default function HomePage() {
           <div className="grid gap-12 lg:grid-cols-2 lg:gap-16">
             <div>
               <h2 className="swat-h2">
-                Набор на сезон 2027
+                Займи место
                 <br />
-                стартует 1 сентября
+                на лето 2027
               </h2>
               <p className="mt-6 max-w-lg leading-relaxed text-[var(--color-ink-soft)]">
-                Оставь контакт — напишем, когда появятся подтверждённые офферы
-                с полным расчётом. Без спама и без звонков с давлением: одно
-                сообщение, когда будет что показать.
+                Набор откроется 1 сентября. Кто в списке — получит офферы с
+                расчётом первым. Одно сообщение, без спама и звонков.
               </p>
               <p className="swat-note mt-8 max-w-lg">
-                SWAT — независимый сервис расчёта. Мы не спонсор программы и не
-                работодатель. Размещение идёт через назначенного спонсора
-                BridgeUSA, и его имя мы называем до оплаты.
+                SWAT — не спонсор и не работодатель. Размещение идёт через
+                назначенного спонсора BridgeUSA, его имя мы называем до оплаты.
               </p>
             </div>
             <WaitlistForm />
@@ -403,15 +334,14 @@ export default function HomePage() {
       </main>
 
       <footer className="mx-auto max-w-[86rem] px-6 lg:px-10">
-        <p className="max-w-3xl pb-8 text-[0.8rem] leading-relaxed text-[var(--color-ink-faint)]">
+        <p className="swat-note max-w-3xl pb-8">
           Расчёты на сайте — оценка, а не оффер и не налоговая консультация.
-          Условия работы подтверждаются письменно работодателем и спонсором до
-          любой оплаты. Проверяй спонсора в официальном реестре BridgeUSA на
-          j1visa.state.gov.
+          Условия подтверждаются письменно работодателем и спонсором до любой
+          оплаты. Спонсора проверяй в реестре BridgeUSA на j1visa.state.gov.
         </p>
         <div className="border-t border-[var(--color-ink)]" />
         <div className="flex flex-wrap items-center justify-between gap-3 py-6">
-          <span className="swat-caption">Прозрачный расчёт для студентов</span>
+          <span className="swat-caption">Считаем честно</span>
           <span className="swat-caption">SWAT © 2026</span>
         </div>
       </footer>

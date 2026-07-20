@@ -253,7 +253,11 @@ describe("calculateEarnings — предупреждения", () => {
     expect(messages).toContain("часов в неделю — мало");
     expect(messages).toContain("Жильё съедает");
 
-    expect(result.warnings.filter((w) => w.level === "danger")).toHaveLength(3);
+    // Ровно два danger: убыточность и незаконная ставка. Предупреждение
+    // об окупаемости для убыточной поездки не дублируется — это то же самое,
+    // сказанное другими словами.
+    expect(result.warnings.filter((w) => w.level === "danger")).toHaveLength(2);
+    expect(messages).not.toContain("не успеешь");
   });
 
   it("называет в тексте ту же сумму убытка, что стоит в итоговой строке", () => {

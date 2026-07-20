@@ -262,18 +262,9 @@ function buildWarnings(
     });
   }
 
-  if (context.breakEvenWeek === null) {
-    warnings.push({
-      level: "danger",
-      message:
-        "Недельный остаток нулевой или отрицательный — расходы съедают весь доход. Такой оффер не окупится никогда.",
-    });
-  } else if (context.breakEvenWeek > input.weeks) {
-    warnings.push({
-      level: "danger",
-      message: `Затраты на программу окупаются к ${context.breakEvenWeek}-й неделе, а сезон длится ${input.weeks}. Ты не успеешь выйти в ноль.`,
-    });
-  } else if (context.breakEvenWeek > input.weeks * 0.7) {
+  // Про окупаемость говорим только там, где поездка в плюсе: для убыточной
+  // уже есть предупреждение выше, и второе о том же — просто шум.
+  if (context.netHome >= 0 && context.breakEvenWeek !== null && context.breakEvenWeek > input.weeks * 0.7) {
     warnings.push({
       level: "caution",
       message: `В ноль выходишь только к ${context.breakEvenWeek}-й неделе из ${input.weeks}. Болезнь или срезанные часы уводят сезон в минус — запаса нет.`,

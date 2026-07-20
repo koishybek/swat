@@ -1,11 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import {
-  calculateEarnings,
-  formatUsd,
-  type EarningsWarning,
-} from "@/lib/earnings";
+import { calculateEarnings, formatUsd } from "@/lib/earnings";
 import { FIXED_UPFRONT, SCENARIOS } from "@/lib/scenarios";
 import { STATES } from "@/lib/states";
 
@@ -85,12 +81,11 @@ function Control({
   );
 }
 
-const FLAG_MARK: Record<EarningsWarning["level"], string> = {
-  danger: "!",
-  caution: "?",
-  info: "i",
-};
-
+/**
+ * Компактный калькулятор: четыре ползунка, переключатель второй работы,
+ * пять итоговых строк. Полная бухгалтерия спрятана в разворачиваемый блок —
+ * она нужна для доверия, но не должна встречать посетителя первой.
+ */
 export function SeasonCalculator() {
   const [index, setIndex] = useState(0);
   const base = SCENARIOS[index]!;
@@ -98,10 +93,7 @@ export function SeasonCalculator() {
   const [wage, setWage] = useState(base.hourlyWage);
   const [hours, setHours] = useState(base.weeklyHours);
   const [weeks, setWeeks] = useState(base.weeks);
-  const [tips, setTips] = useState(base.tipsPerWeek);
   const [housing, setHousing] = useState(base.housingPerWeek);
-  // По умолчанию одна работа: это исход, который студент получает
-  // в любом другом агентстве. Вторую он должен увидеть как прибавку.
   const [secondJob, setSecondJob] = useState(false);
 
   function select(next: number) {
@@ -110,7 +102,6 @@ export function SeasonCalculator() {
     setWage(s.hourlyWage);
     setHours(s.weeklyHours);
     setWeeks(s.weeks);
-    setTips(s.tipsPerWeek);
     setHousing(s.housingPerWeek);
     setSecondJob(false);
   }
@@ -124,14 +115,14 @@ export function SeasonCalculator() {
       hourlyWage: wage,
       weeklyHours: hours,
       weeks,
-      tipsPerWeek: tips,
+      tipsPerWeek: base.tipsPerWeek,
       housingPerWeek: housing,
       foodPerWeek: base.foodPerWeek,
       transportPerWeek: base.transportPerWeek,
       stateCode: base.stateCode,
       upfront: { ...FIXED_UPFRONT, flights: base.flights },
     }),
-    [wage, hours, weeks, tips, housing, base],
+    [wage, hours, weeks, housing, base],
   );
 
   const result = useMemo(
@@ -144,7 +135,7 @@ export function SeasonCalculator() {
     [shared, activeSecondHours, wage],
   );
 
-  // Прибавка считается всегда, чтобы стоять прямо на переключателе.
+  // Прибавка от второй работы стоит прямо на переключателе.
   const gain = useMemo(() => {
     if (!secondJobAvailable) return 0;
     const one = calculateEarnings({
@@ -164,9 +155,12 @@ export function SeasonCalculator() {
   const stateTaxTotal = result.taxes.state + result.taxes.local;
   const isLoss = result.netHome < 0;
 
+  // Наружу — только опасности. Советы и справки живут в полном расчёте.
+  const dangers = result.warnings.filter((w) => w.level === "danger");
+  const rest = result.warnings.filter((w) => w.level !== "danger");
+
   return (
     <div className="swat-stub px-5 py-8 sm:px-8">
-      {/* Шапка документа */}
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <span className="swat-caption" style={{ color: "var(--color-ink)" }}>
           SWAT · расчёт сезона
@@ -194,7 +188,6 @@ export function SeasonCalculator() {
         </select>
       </div>
 
-      {/* Управление */}
       <div className="mt-6 grid gap-3.5">
         <Control
           label="Ставка в час"
@@ -224,15 +217,6 @@ export function SeasonCalculator() {
           onChange={setWeeks}
         />
         <Control
-          label="Чаевые в неделю"
-          value={tips}
-          display={`$${tips}`}
-          min={0}
-          max={400}
-          step={5}
-          onChange={setTips}
-        />
-        <Control
           label="Жильё в неделю"
           value={housing}
           display={`$${housing}`}
@@ -242,7 +226,6 @@ export function SeasonCalculator() {
           onChange={setHousing}
         />
 
-        {/* Вторая работа — главный рычаг всего сезона. */}
         <div className="swat-control border-t border-[var(--color-stub-line)] pt-3.5">
           <label
             htmlFor="second-job"
@@ -263,8 +246,11 @@ export function SeasonCalculator() {
                 checked={secondJob}
                 onChange={(event) => setSecondJob(event.target.checked)}
               />
-              <span className="swat-caption" style={{ color: "var(--color-ink-soft)" }}>
-                {base.secondJobHours} ч/нед., через спонсора
+              <span
+                className="swat-caption"
+                style={{ color: "var(--color-ink-soft)" }}
+              >
+                {base.secondJobHours} ч/нед.
               </span>
             </label>
           ) : (
@@ -284,82 +270,23 @@ export function SeasonCalculator() {
         </div>
       </div>
 
-      {/* Начислено */}
+      {/* Пять строк итога — вся история сезона без бухгалтерии. */}
       <div className="mt-7 border-t border-[var(--color-stub-line)] pt-4">
-        <p className="swat-section mb-2">Начислено</p>
-        <Row label="Основные часы" amount={formatUsd(result.gross.base)} />
-        {result.gross.overtime > 0 && (
-          <Row label="Переработка" amount={formatUsd(result.gross.overtime)} />
-        )}
-        {result.gross.tips > 0 && (
-          <Row label="Чаевые" amount={formatUsd(result.gross.tips)} />
-        )}
-        {result.gross.secondJob > 0 && (
-          <Row label="Вторая работа" amount={formatUsd(result.gross.secondJob)} />
-        )}
+        <Row label="Заработаешь за сезон" amount={formatUsd(result.gross.total)} />
         <Row
-          label="Итого начислено"
-          amount={formatUsd(result.gross.total)}
-          total
-        />
-      </div>
-
-      {/* Удержано */}
-      <div className="mt-6 border-t border-[var(--color-stub-line)] pt-4">
-        <p className="swat-section mb-2">Удержано</p>
-        <Row label="Жильё" amount={formatUsd(result.living.housing)} negative />
-        <Row
-          label="Еда и транспорт"
-          amount={formatUsd(result.living.food + result.living.transport)}
+          label="Жильё, еда, дорога"
+          amount={formatUsd(result.living.total)}
           negative
         />
+        <Row label="Налоги" amount={formatUsd(result.taxes.total)} negative />
         <Row
-          label="Федеральный налог"
-          amount={formatUsd(result.taxes.federal)}
-          negative
-        />
-        <Row
-          label={`Налог штата (${base.stateCode})`}
-          amount={formatUsd(stateTaxTotal)}
-          negative={stateTaxTotal > 0}
-        />
-        <Row
-          label="Программа и перелёт"
+          label="Программа, виза, билет"
           amount={formatUsd(result.upfrontTotal)}
           negative
         />
-        <Row
-          label="Итого удержано"
-          amount={formatUsd(
-            result.living.total + result.taxes.total + result.upfrontTotal,
-          )}
-          negative
-          total
-        />
       </div>
 
-      {/*
-        FICA стоит здесь со знаком плюс, а не в удержаниях: участник J-1
-        в статусе нерезидента от него освобождён по IRC 3121(b)(19).
-        Показать его удержанием — соврать в первом же экране.
-      */}
-      <div className="mt-3 border-t border-dotted border-[var(--color-stub-line)] pt-3">
-        <Row
-          label="FICA не удерживается · J-1 nonresident"
-          amount={`+${formatUsd(result.taxes.ficaSaved)}`}
-          muted
-        />
-        {result.taxes.obbbaDeduction > 0 && (
-          <Row
-            label="Чаевые и переработка вне налога"
-            amount={`+${formatUsd(result.taxes.obbbaDeduction)}`}
-            muted
-          />
-        )}
-      </div>
-
-      {/* Итог */}
-      <div className="swat-total mt-5">
+      <div className="swat-total mt-4">
         <span className="swat-total__label">На руки домой</span>
         <span
           className="swat-total__value transition-colors duration-200"
@@ -374,18 +301,15 @@ export function SeasonCalculator() {
           ? "Не окупается: расходы съедают весь доход"
           : result.breakEvenWeek > weeks
             ? `Не окупается: нужно ${result.breakEvenWeek} недель, а сезон — ${weeks}`
-            : `Выход в ноль · ${result.breakEvenWeek}-я неделя из ${weeks} · ${formatUsd(result.netPerWeek)}/нед.`}
+            : `В ноль выйдешь на ${result.breakEvenWeek}-й неделе из ${weeks}`}
       </p>
 
-      {result.warnings.length > 0 && (
+      {dangers.length > 0 && (
         <div className="mt-4 grid gap-2">
-          {result.warnings.map((warning) => (
-            <p
-              key={warning.message}
-              className={`swat-flag swat-flag--${warning.level}`}
-            >
+          {dangers.map((warning) => (
+            <p key={warning.message} className="swat-flag swat-flag--danger">
               <b className="swat-num shrink-0" aria-hidden="true">
-                [{FLAG_MARK[warning.level]}]
+                [!]
               </b>
               <span>{warning.message}</span>
             </p>
@@ -393,9 +317,84 @@ export function SeasonCalculator() {
         </div>
       )}
 
-      <p className="swat-note mt-5">
-        Предварительная оценка. Ставки, жильё и длительность сезона
-        подтверждаются письменно у работодателя и спонсора до оплаты.
+      {/* Полная бухгалтерия — для тех, кто хочет проверить каждую строку. */}
+      <details className="swat-details mt-5">
+        <summary>Показать полный расчёт</summary>
+        <div className="mt-3">
+          <p className="swat-section mb-1.5">Начислено</p>
+          <Row label="Основные часы" amount={formatUsd(result.gross.base)} />
+          {result.gross.overtime > 0 && (
+            <Row label="Переработка ×1.5" amount={formatUsd(result.gross.overtime)} />
+          )}
+          {result.gross.tips > 0 && (
+            <Row label="Чаевые (оценка)" amount={formatUsd(result.gross.tips)} />
+          )}
+          {result.gross.secondJob > 0 && (
+            <Row
+              label="Вторая работа"
+              amount={formatUsd(result.gross.secondJob)}
+            />
+          )}
+
+          <p className="swat-section mb-1.5 mt-4">Удержано</p>
+          <Row label="Жильё" amount={formatUsd(result.living.housing)} negative />
+          <Row
+            label="Еда и транспорт"
+            amount={formatUsd(result.living.food + result.living.transport)}
+            negative
+          />
+          <Row
+            label="Федеральный налог"
+            amount={formatUsd(result.taxes.federal)}
+            negative
+          />
+          <Row
+            label={`Налог штата (${base.stateCode})`}
+            amount={formatUsd(stateTaxTotal)}
+            negative={stateTaxTotal > 0}
+          />
+          <Row
+            label="Программа, виза, страховка, билет"
+            amount={formatUsd(result.upfrontTotal)}
+            negative
+          />
+
+          <div className="mt-3 border-t border-dotted border-[var(--color-stub-line)] pt-2.5">
+            <Row
+              label={`FICA не удерживается — льгота J-1 (${state.name})`}
+              amount={`+${formatUsd(result.taxes.ficaSaved)}`}
+              muted
+            />
+            {result.taxes.obbbaDeduction > 0 && (
+              <Row
+                label="Чаевые и переработка вне налога"
+                amount={`+${formatUsd(result.taxes.obbbaDeduction)}`}
+                muted
+              />
+            )}
+          </div>
+
+          {rest.length > 0 && (
+            <div className="mt-3 grid gap-2">
+              {rest.map((warning) => (
+                <p
+                  key={warning.message}
+                  className={`swat-flag swat-flag--${warning.level}`}
+                >
+                  <b className="swat-num shrink-0" aria-hidden="true">
+                    [{warning.level === "caution" ? "?" : "i"}]
+                  </b>
+                  <span>{warning.message}</span>
+                </p>
+              ))}
+            </div>
+          )}
+        </div>
+      </details>
+
+      <p className="swat-note mt-4">
+        Это оценка, не оффер. Ставку, часы и цену жилья работодатель и спонсор
+        подтверждают письменно — до того, как ты платишь.
       </p>
     </div>
   );
