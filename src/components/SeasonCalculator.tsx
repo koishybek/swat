@@ -393,7 +393,7 @@ export function SeasonCalculator() {
         </div>
       )}
 
-      <p className="swat-caption mt-5 leading-relaxed">
+      <p className="swat-note mt-5">
         Предварительная оценка. Ставки, жильё и длительность сезона
         подтверждаются письменно у работодателя и спонсора до оплаты.
       </p>

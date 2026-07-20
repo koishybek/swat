@@ -138,7 +138,7 @@ export function WaitlistForm() {
         </p>
       )}
 
-      <p className="swat-caption mt-4 leading-relaxed">
+      <p className="swat-note mt-4">
         Контакт нужен только чтобы написать про офферы. Не передаём третьим
         лицам и не звоним без твоего запроса.
       </p>

@@ -105,6 +105,16 @@
     color: var(--color-ink-faint);
   }
 
+  /*
+    Примечание в несколько строк. Отдельно от .swat-caption: капс уместен
+    на подписи в два слова, но абзац в нём читается по буквам, а не словами.
+  */
+  .swat-note {
+    font-size: 0.8rem;
+    line-height: 1.55;
+    color: var(--color-ink-faint);
+  }
+
   /* Заголовок раздела внутри корешка. */
   .swat-section {
     font-family: var(--font-mono);

@@ -299,7 +299,7 @@ export default function HomePage() {
             </table>
           </div>
 
-          <p className="swat-caption mt-6 max-w-2xl leading-relaxed">
+          <p className="swat-note mt-6 max-w-2xl">
             Предварительные оценки на основе типовых условий. Каждое число
             заменяется подтверждённым после сверки с работодателем. «Ловушка» —
             направление, где остаток съедают жильё, короткий сезон или
@@ -391,7 +391,7 @@ export default function HomePage() {
                 с полным расчётом. Без спама и без звонков с давлением: одно
                 сообщение, когда будет что показать.
               </p>
-              <p className="swat-caption mt-8 max-w-lg leading-relaxed">
+              <p className="swat-note mt-8 max-w-lg">
                 SWAT — независимый сервис расчёта. Мы не спонсор программы и не
                 работодатель. Размещение идёт через назначенного спонсора
                 BridgeUSA, и его имя мы называем до оплаты.
