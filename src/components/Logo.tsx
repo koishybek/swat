@@ -40,6 +40,10 @@ export function Logo({ height = 40 }: { height?: number }) {
             left: -CROP.left * imageSize,
             top: -CROP.top * imageSize,
             maxWidth: "none",
+            // Исходник лежит на белом фоне. Орёл тёмный, поэтому умножение
+            // растворяет подложку в кремовой бумаге и не трогает сам знак —
+            // дешевле, чем перерисовывать файл с прозрачностью.
+            mixBlendMode: "multiply",
           }}
         />
       </span>
