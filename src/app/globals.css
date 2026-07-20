@@ -1,0 +1,317 @@
+@import "tailwindcss";
+
+/*
+  SWAT — дизайн-система «платёжный корешок».
+
+  Логика: главный артефакт в жизни участника Work & Travel — первая американская
+  расчётка. Защитная зелёная бумага, линованные строки, капсовые подписи,
+  моноширинные цифры и жирная итоговая строка внизу. Весь интерфейс — этот документ.
+  Конкуренты продают фотографию океана; мы продаём строку «чистыми домой».
+*/
+
+@theme {
+  /* Бумага документа */
+  --color-paper: #f5f3ea;
+  --color-paper-deep: #ebe8d9;
+  --color-paper-edge: #ddd9c6;
+
+  /* Защитная зелень корешка */
+  --color-stub: #dce6d2;
+  --color-stub-deep: #c9d7bc;
+
+  /* Печатная краска */
+  --color-ink: #14170f;
+  --color-ink-soft: #4d5344;
+  --color-ink-faint: #7c8272;
+  --color-rule: #a9b5a0;
+
+  /* Печать «проверено» — навy из исходной айдентики */
+  --color-stamp: #1f3d7a;
+  --color-stamp-soft: #3a5c9e;
+
+  /* Удержания и предупреждения — красный из исходной айдентики */
+  --color-void: #a32b22;
+  --color-void-soft: #c8453b;
+
+  --font-display: var(--font-oswald), "Arial Narrow", sans-serif;
+  --font-body: var(--font-golos), system-ui, sans-serif;
+  --font-mono: var(--font-mono-jb), ui-monospace, monospace;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background-color: var(--color-stamp);
+    color: var(--color-paper);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-stamp);
+    outline-offset: 3px;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    text-transform: uppercase;
+    line-height: 0.92;
+    letter-spacing: -0.01em;
+  }
+}
+
+@layer components {
+  /* ---------- Типографика ---------- */
+
+  .swat-display {
+    font-size: clamp(2.6rem, 10vw, 6.5rem);
+  }
+
+  .swat-h2 {
+    font-size: clamp(1.9rem, 5.5vw, 3.4rem);
+  }
+
+  /* Капсовая подпись поля — как в шапке графы официального бланка. */
+  .swat-caption {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+  }
+
+  .swat-num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+
+  /* ---------- Корешок ---------- */
+
+  .swat-stub {
+    position: relative;
+    background-color: var(--color-stub);
+    /* Тонкая диагональная сетка — намёк на защитную сетку гербовой бумаги. */
+    background-image: repeating-linear-gradient(
+      45deg,
+      rgb(20 23 15 / 0.04) 0 1px,
+      transparent 1px 7px
+    );
+    box-shadow:
+      0 1px 0 rgb(20 23 15 / 0.08),
+      0 18px 40px -28px rgb(20 23 15 / 0.55);
+  }
+
+  /* Оторванный край: кружки цвета бумаги, «выкусывающие» корешок сверху и снизу. */
+  .swat-stub::before,
+  .swat-stub::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 10px;
+    background-image: radial-gradient(
+      circle at 6px 5px,
+      var(--color-paper) 4.5px,
+      transparent 5px
+    );
+    background-size: 14px 10px;
+    pointer-events: none;
+  }
+
+  .swat-stub::before {
+    top: -5px;
+  }
+
+  .swat-stub::after {
+    bottom: -5px;
+  }
+
+  /* ---------- Строка расчётки с точечным выносом ---------- */
+
+  .swat-row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    padding-block: 0.3rem;
+  }
+
+  .swat-row__label {
+    font-size: 0.875rem;
+    color: var(--color-ink-soft);
+  }
+
+  /* Точечный вынос между подписью и суммой — как в оглавлении или счёте. */
+  .swat-row__leader {
+    flex: 1 1 auto;
+    min-width: 1.5rem;
+    border-bottom: 1px dotted var(--color-rule);
+    transform: translateY(-0.28rem);
+  }
+
+  .swat-row__amount {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 0.9375rem;
+    white-space: nowrap;
+  }
+
+  /* ---------- Итоговая строка ---------- */
+
+  .swat-total {
+    border-top: 3px double var(--color-ink);
+    border-bottom: 3px double var(--color-ink);
+  }
+
+  /* ---------- Печать ---------- */
+
+  .swat-stamp {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid currentColor;
+    box-shadow: inset 0 0 0 1px currentColor;
+    color: var(--color-stamp);
+    padding: 0.3rem 0.7rem 0.25rem;
+    transform: rotate(-3deg);
+  }
+
+  .swat-stamp__word {
+    font-family: var(--font-display);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    line-height: 1;
+  }
+
+  .swat-stamp__sub {
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    line-height: 1;
+  }
+
+  /* ---------- Ползунок ---------- */
+
+  .swat-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 2px;
+    background: var(--color-rule);
+    cursor: pointer;
+  }
+
+  .swat-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 22px;
+    height: 22px;
+    background: var(--color-stamp);
+    border: 3px solid var(--color-stub);
+    box-shadow: 0 0 0 1px var(--color-stamp);
+    cursor: grab;
+  }
+
+  .swat-slider::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+    border-radius: 0;
+    background: var(--color-stamp);
+    border: 3px solid var(--color-stub);
+    box-shadow: 0 0 0 1px var(--color-stamp);
+    cursor: grab;
+  }
+
+  .swat-slider:active::-webkit-slider-thumb {
+    cursor: grabbing;
+  }
+
+  /* ---------- Кнопки ---------- */
+
+  .swat-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.9375rem;
+    padding: 0.85rem 1.6rem;
+    background: var(--color-stamp);
+    color: var(--color-paper);
+    border: 2px solid var(--color-stamp);
+    transition: background-color 140ms ease, color 140ms ease;
+  }
+
+  .swat-button:hover {
+    background: var(--color-ink);
+    border-color: var(--color-ink);
+  }
+
+  .swat-button--ghost {
+    background: transparent;
+    color: var(--color-stamp);
+  }
+
+  .swat-button--ghost:hover {
+    background: var(--color-stamp);
+    color: var(--color-paper);
+    border-color: var(--color-stamp);
+  }
+
+  /* ---------- Предупреждения ---------- */
+
+  .swat-flag {
+    display: flex;
+    gap: 0.65rem;
+    padding: 0.7rem 0.85rem;
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    border-left: 3px solid currentColor;
+    background: rgb(20 23 15 / 0.035);
+  }
+
+  .swat-flag--danger {
+    color: var(--color-void);
+  }
+
+  .swat-flag--caution {
+    color: #8a6206;
+  }
+
+  .swat-flag--info {
+    color: var(--color-stamp);
+  }
+
+  .swat-flag > span {
+    color: var(--color-ink);
+  }
+}
