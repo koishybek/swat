@@ -256,6 +256,38 @@ describe("calculateEarnings — предупреждения", () => {
     expect(result.warnings.filter((w) => w.level === "danger")).toHaveLength(3);
   });
 
+  it("называет в тексте ту же сумму убытка, что стоит в итоговой строке", () => {
+    // Регрессия: предупреждение считалось от неокруглённого остатка,
+    // поэтому в итоге стояло −$1 029, а в тексте — $1030.
+    const result = calculateEarnings({
+      hourlyWage: 15,
+      weeklyHours: 38,
+      weeks: 10,
+      tipsPerWeek: 90,
+      housingPerWeek: 190,
+      foodPerWeek: 70,
+      transportPerWeek: 10,
+      stateCode: "MD",
+      upfront: {
+        programFee: 1_900,
+        sevisFee: 35,
+        visaFee: 185,
+        integrityFee: 250,
+        flights: 1_400,
+        insurance: 180,
+      },
+    });
+
+    expect(result.netHome).toBeLessThan(0);
+    const shown = formatUsd(Math.abs(result.netHome));
+    const lossWarning = result.warnings.find((w) =>
+      w.message.includes("убыточна"),
+    );
+
+    expect(lossWarning).toBeDefined();
+    expect(lossWarning!.message).toContain(shown);
+  });
+
   it("предупреждает, когда жильё съедает больше 35% дохода", () => {
     const result = calculateEarnings(
       offer({ hourlyWage: 16, weeklyHours: 40, housingPerWeek: 250 }),

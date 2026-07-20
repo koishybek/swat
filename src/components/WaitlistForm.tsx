@@ -123,7 +123,7 @@ export function WaitlistForm() {
 
       <button
         type="submit"
-        className="swat-button mt-7 w-full"
+        className="swat-button swat-button--solid mt-7 w-full"
         disabled={status.kind === "sending"}
       >
         {status.kind === "sending" ? "Отправляем…" : "Записаться в список"}

@@ -221,7 +221,13 @@ export function calculateEarnings(rawInput: EarningsInput): EarningsResult {
     netPerWeek: round(netPerWeek),
     breakEvenWeek,
     housingBurden,
-    warnings: buildWarnings(input, { netHome, breakEvenWeek, housingBurden }),
+    // Предупреждения получают уже округлённый остаток: иначе в тексте
+    // всплывает $1030 там, где в итоговой строке стоит $1029.
+    warnings: buildWarnings(input, {
+      netHome: round(netHome),
+      breakEvenWeek,
+      housingBurden,
+    }),
   };
 }
 
