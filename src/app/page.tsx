@@ -2,13 +2,24 @@ import { SeasonCalculator } from "@/components/SeasonCalculator";
 import { Stamp } from "@/components/Stamp";
 import { WaitlistForm } from "@/components/WaitlistForm";
 import { formatUsd } from "@/lib/earnings";
-import { rankScenarios } from "@/lib/scenarios";
+import { rankScenarios, REALISTIC_SEASON_WEEKS } from "@/lib/scenarios";
+
+const TIER_LABEL = {
+  target: null,
+  second: "второй эшелон",
+  trap: "ловушка",
+} as const;
 
 export default function HomePage() {
   const ranked = rankScenarios();
-  const best = ranked[0]!;
-  const worst = ranked[ranked.length - 1]!;
-  const spread = best.result.netHome - worst.result.netHome;
+
+  const profitableWithOneJob = ranked.filter(
+    (row) => row.oneJob.netHome > 0,
+  ).length;
+  const bestGain = ranked.reduce(
+    (max, row) => Math.max(max, row.secondJobGain),
+    0,
+  );
 
   return (
     <>
@@ -20,7 +31,10 @@ export default function HomePage() {
           <a href="#directions" className="hover:text-[var(--color-stamp)]">
             Направления
           </a>
-          <a href="#process" className="hidden hover:text-[var(--color-stamp)] sm:inline">
+          <a
+            href="#process"
+            className="hidden hover:text-[var(--color-stamp)] sm:inline"
+          >
             Как мы работаем
           </a>
           <a href="#waitlist" className="swat-button px-4 py-2 text-[0.8rem]">
@@ -30,43 +44,48 @@ export default function HomePage() {
       </header>
 
       <main id="top">
-        {/* Герой: тезис плюс живой документ */}
         <section className="mx-auto max-w-6xl px-5 pb-16 pt-6 sm:pt-12">
           <div className="grid gap-12 lg:grid-cols-[1fr_1.05fr] lg:items-start lg:gap-14">
             <div className="lg:sticky lg:top-10">
-              <p className="swat-caption">Сезон 2027 · набор открывается осенью</p>
+              <p className="swat-caption">
+                Сезон 2027 · набор открывается 1 сентября
+              </p>
               <h1 className="swat-display mt-4">
-                Сначала цифры.
+                Одна работа —
                 <br />
-                <span style={{ color: "var(--color-stamp)" }}>Потом океан.</span>
+                это <span style={{ color: "var(--color-void)" }}>ноль.</span>
               </h1>
               <p className="mt-6 max-w-xl text-[1.05rem] leading-relaxed text-[var(--color-ink-soft)]">
-                Каждое агентство показывает тебе фотографию пляжа. Мы показываем
-                расчётку: что начислят, что удержат и сколько реально останется
-                на руках после жилья, налогов и стоимости самой программы.
+                Студент считает ставку × часы × недели и видит красивую сумму.
+                Потом из неё уходят жильё, еда, налоги, перелёт и стоимость
+                программы — и лето заканчивается в ноль.
               </p>
               <p className="mt-4 max-w-xl text-[1.05rem] leading-relaxed">
-                Иногда расчёт говорит, что в этот оффер ехать не надо. Мы всё
-                равно его показываем.
+                Разница между одной работой и двумя больше, чем разница между
+                всеми штатами вместе взятыми. Мы оформляем вторую — заранее и
+                через спонсора, чтобы она была законной.
               </p>
 
               <dl className="mt-8 grid grid-cols-2 gap-x-6 gap-y-5 border-t border-[var(--color-rule)] pt-6">
                 <div>
-                  <dt className="swat-caption">Разброс по направлениям</dt>
+                  <dt className="swat-caption">Окупается с одной работой</dt>
                   <dd className="swat-num mt-1 text-[1.6rem] font-bold leading-none">
-                    {formatUsd(spread)}
+                    {profitableWithOneJob} из {ranked.length}
                   </dd>
                   <p className="mt-1 text-[0.8rem] text-[var(--color-ink-faint)]">
-                    между лучшим и худшим при похожей работе
+                    направлений за {REALISTIC_SEASON_WEEKS} рабочих недель
                   </p>
                 </div>
                 <div>
-                  <dt className="swat-caption">Разница в ставке</dt>
-                  <dd className="swat-num mt-1 text-[1.6rem] font-bold leading-none">
-                    ${(best.scenario.hourlyWage - worst.scenario.hourlyWage).toFixed(2)}
+                  <dt className="swat-caption">Даёт вторая работа</dt>
+                  <dd
+                    className="swat-num mt-1 text-[1.6rem] font-bold leading-none"
+                    style={{ color: "var(--color-stamp)" }}
+                  >
+                    +{formatUsd(bestGain)}
                   </dd>
                   <p className="mt-1 text-[0.8rem] text-[var(--color-ink-faint)]">
-                    столько объясняет ставка — остальное решают удержания
+                    в лучшей локации, за тот же сезон
                   </p>
                 </div>
               </dl>
@@ -76,7 +95,6 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Что съедает сезон */}
         <section className="border-y-2 border-[var(--color-ink)] bg-[var(--color-paper-deep)]">
           <div className="mx-auto max-w-6xl px-5 py-16">
             <h2 className="swat-h2 max-w-3xl">
@@ -87,20 +105,20 @@ export default function HomePage() {
             <div className="mt-10 grid gap-x-10 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
               {[
                 {
-                  title: "Жильё",
-                  body: "Главная статья расходов. От $110 до $200 в неделю в зависимости от курорта. Если жильё съедает больше 35% дохода, сезон работает на арендодателя.",
+                  title: "Вторая работа",
+                  body: "Единственный рычаг, который меняет исход на тысячи, а не на сотни. Но она обязана быть проверена спонсором до первой смены: работа на неоформленном месте — основание для отчисления с программы.",
                 },
                 {
-                  title: "Часы",
-                  body: "Ставка $17 при 28 часах хуже, чем $15 при 40. Устное «часов будет много» ничего не значит — нужна письменная гарантия минимума.",
+                  title: "Недели",
+                  body: `Окно Казахстана — с 8 мая по 1 сентября, но участник ограничен длительностью своих каникул. Реалистично это ${REALISTIC_SEASON_WEEKS} рабочих недель, а не 16. Считать надо по своему учебному календарю.`,
+                },
+                {
+                  title: "Жильё",
+                  body: "Главная статья расходов, от $105 до $210 в неделю. Если жильё съедает больше 35% дохода, сезон работает на арендодателя. На Кейп-Коде дело доходило до того, что студентам просто негде было жить.",
                 },
                 {
                   title: "Налоги",
-                  body: "Федеральный налог платится с первого доллара: у нерезидента нет стандартного вычета. Зато FICA (7.65%) не удерживается — это законная льгота статуса J-1.",
-                },
-                {
-                  title: "Стоимость входа",
-                  body: "Программа, виза, страховка и перелёт — это несколько тысяч долларов до вылета. Пока они не отбиты, ты работаешь в минус.",
+                  body: "FICA (7.65%) не удерживается — это льгота статуса J-1. Чаевые и надбавки за переработку выведены из-под федерального налога до 2028 года. А вот стандартного вычета у нерезидента нет.",
                 },
               ].map((item) => (
                 <div key={item.title}>
@@ -114,32 +132,35 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Рейтинг направлений по остатку */}
         <section id="directions" className="mx-auto max-w-6xl px-5 py-16">
           <h2 className="swat-h2 max-w-3xl">
-            Рейтинг штатов, посчитанный
+            Направления, отсортированные
             <br />
-            по остатку, а не по вайбу
+            по остатку на руках
           </h2>
           <p className="mt-5 max-w-2xl leading-relaxed text-[var(--color-ink-soft)]">
-            Одна и та же сезонная работа в разных штатах даёт разный результат.
-            Ниже — модельный расчёт: типовая работа, типовое жильё, вычтено всё,
-            включая перелёт из Алматы и стоимость программы.
+            Типовая работа, типовое жильё, {REALISTIC_SEASON_WEEKS} рабочих
+            недель. Вычтено всё, включая перелёт из Алматы, визовые сборы и
+            стоимость программы. Колонка слева — то, что получают почти все.
+            Справа — то же место с двумя одобренными работами.
           </p>
 
           {/* Мобильная раскладка: главное число не должно прятаться за скроллом. */}
           <ul className="mt-10 grid gap-3 lg:hidden">
             {ranked.map((row, index) => {
-              const isLoss = row.result.netHome < 0;
+              const isLoss = row.twoJobs.netHome < 0;
+              const oneJobLoss = row.oneJob.netHome <= 0;
+              const tier = TIER_LABEL[row.scenario.tier];
               return (
                 <li
                   key={`${row.scenario.stateCode}-${row.scenario.town}`}
-                  className="border-2 border-[var(--color-ink)] px-4 py-3.5"
-                  style={
-                    isLoss
-                      ? { borderColor: "var(--color-void)" }
-                      : undefined
-                  }
+                  className="border-2 px-4 py-3.5"
+                  style={{
+                    borderColor:
+                      isLoss || row.scenario.tier === "trap"
+                        ? "var(--color-void)"
+                        : "var(--color-ink)",
+                  }}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -150,28 +171,46 @@ export default function HomePage() {
                         {row.scenario.town}, {row.scenario.stateCode}
                       </p>
                       <p className="mt-0.5 text-[0.8rem] text-[var(--color-ink-faint)]">
-                        {row.scenario.role} · ставка $
-                        {row.scenario.hourlyWage.toFixed(2)}
+                        {row.scenario.role}
+                        {tier && (
+                          <span
+                            style={{ color: "var(--color-void)" }}
+                            className="uppercase"
+                          >
+                            {" · "}
+                            {tier}
+                          </span>
+                        )}
                       </p>
                     </div>
                     <div className="shrink-0 text-right">
                       <span
-                        className="swat-num block text-[1.35rem] font-bold leading-none"
-                        style={
-                          isLoss ? { color: "var(--color-void)" } : undefined
-                        }
+                        className="swat-num block text-[1.3rem] font-bold leading-none"
+                        style={{
+                          color: isLoss ? "var(--color-void)" : undefined,
+                        }}
                       >
-                        {formatUsd(row.result.netHome)}
+                        {formatUsd(row.twoJobs.netHome)}
                       </span>
-                      <span className="swat-caption">чистыми</span>
+                      <span className="swat-caption">с двумя работами</span>
                     </div>
                   </div>
-                  {isLoss && (
+                  <p className="swat-caption mt-2 flex flex-wrap gap-x-3">
+                    <span style={oneJobLoss ? { color: "var(--color-void)" } : undefined}>
+                      одна работа · {formatUsd(row.oneJob.netHome)}
+                    </span>
+                    {row.secondJobGain > 0 && (
+                      <span style={{ color: "var(--color-stamp)" }}>
+                        вторая · +{formatUsd(row.secondJobGain)}
+                      </span>
+                    )}
+                  </p>
+                  {row.scenario.tier === "trap" && (
                     <p
-                      className="swat-caption mt-2"
+                      className="swat-caption mt-2 leading-relaxed"
                       style={{ color: "var(--color-void)" }}
                     >
-                      Сезон не окупается — ехать в минус
+                      {row.scenario.tierNote}
                     </p>
                   )}
                 </li>
@@ -180,22 +219,28 @@ export default function HomePage() {
           </ul>
 
           <div className="mt-10 hidden overflow-x-auto lg:block">
-            <table className="w-full min-w-[46rem] border-collapse text-left">
+            <table className="w-full min-w-[52rem] border-collapse text-left">
               <thead>
                 <tr className="border-b-2 border-[var(--color-ink)]">
                   <th className="swat-caption py-3 pr-4">Место</th>
                   <th className="swat-caption py-3 pr-4">Направление</th>
                   <th className="swat-caption py-3 pr-4 text-right">Ставка</th>
-                  <th className="swat-caption py-3 pr-4 text-right">Начислено</th>
-                  <th className="swat-caption py-3 pr-4 text-right">Удержано</th>
-                  <th className="swat-caption py-3 text-right">Чистыми домой</th>
+                  <th className="swat-caption py-3 pr-4 text-right">
+                    Одна работа
+                  </th>
+                  <th className="swat-caption py-3 pr-4 text-right">
+                    Вторая даёт
+                  </th>
+                  <th className="swat-caption py-3 text-right">
+                    Итого с двумя
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {ranked.map((row, index) => {
-                  const deductions =
-                    row.result.gross.total - row.result.netHome;
-                  const isLoss = row.result.netHome < 0;
+                  const isLoss = row.twoJobs.netHome < 0;
+                  const oneJobLoss = row.oneJob.netHome <= 0;
+                  const tier = TIER_LABEL[row.scenario.tier];
                   return (
                     <tr
                       key={`${row.scenario.stateCode}-${row.scenario.town}`}
@@ -210,21 +255,43 @@ export default function HomePage() {
                         </span>
                         <span className="block text-[0.8rem] text-[var(--color-ink-faint)]">
                           {row.scenario.role}
-                          {!row.hasOwnMinimum && " · нет минимума штата"}
                           {!row.hasStateIncomeTax && " · нет налога штата"}
+                          {tier && (
+                            <span
+                              style={{ color: "var(--color-void)" }}
+                              className="uppercase"
+                            >
+                              {" · "}
+                              {tier}
+                            </span>
+                          )}
                         </span>
                       </td>
                       <td className="swat-num py-3.5 pr-4 text-right">
                         ${row.scenario.hourlyWage.toFixed(2)}
                       </td>
-                      <td className="swat-num py-3.5 pr-4 text-right text-[var(--color-ink-soft)]">
-                        {formatUsd(row.result.gross.total)}
+                      <td
+                        className="swat-num py-3.5 pr-4 text-right"
+                        style={{
+                          color: oneJobLoss
+                            ? "var(--color-void)"
+                            : "var(--color-ink-soft)",
+                        }}
+                      >
+                        {formatUsd(row.oneJob.netHome)}
                       </td>
                       <td
                         className="swat-num py-3.5 pr-4 text-right"
-                        style={{ color: "var(--color-void)" }}
+                        style={{
+                          color:
+                            row.secondJobGain > 0
+                              ? "var(--color-stamp)"
+                              : "var(--color-ink-faint)",
+                        }}
                       >
-                        −{formatUsd(deductions)}
+                        {row.secondJobGain > 0
+                          ? `+${formatUsd(row.secondJobGain)}`
+                          : "нет"}
                       </td>
                       <td
                         className="swat-num py-3.5 text-right text-[1.05rem] font-bold"
@@ -232,12 +299,7 @@ export default function HomePage() {
                           isLoss ? { color: "var(--color-void)" } : undefined
                         }
                       >
-                        {formatUsd(row.result.netHome)}
-                        {isLoss && (
-                          <span className="swat-caption block font-normal">
-                            не окупается
-                          </span>
-                        )}
+                        {formatUsd(row.twoJobs.netHome)}
                       </td>
                     </tr>
                   );
@@ -248,29 +310,35 @@ export default function HomePage() {
 
           <p className="swat-caption mt-5 max-w-2xl leading-relaxed">
             Предварительные оценки на основе типовых условий. Каждое число
-            заменяется подтверждённым после сверки с работодателем. Сортировка
-            по остатку на руках после всех расходов.
+            заменяется подтверждённым после сверки с работодателем. «Ловушка»
+            означает направление, где остаток съедают жильё, короткий сезон
+            или отсутствие второй работы.
           </p>
         </section>
 
-        {/* Как мы работаем */}
         <section
           id="process"
           className="border-y-2 border-[var(--color-ink)] bg-[var(--color-stub)]"
         >
           <div className="mx-auto max-w-6xl px-5 py-16">
-            <h2 className="swat-h2 max-w-3xl">Что мы обещаем и чего не обещаем</h2>
+            <h2 className="swat-h2 max-w-3xl">
+              Что мы обещаем и чего не обещаем
+            </h2>
             <div className="mt-10 grid gap-10 lg:grid-cols-2">
               <div>
                 <p className="swat-caption mb-4">Обещаем</p>
                 <ul className="grid gap-4">
                   {[
-                    "Показать расчёт до оплаты — включая офферы, от которых отговариваем.",
-                    "Назвать спонсора, через которого идёт размещение, и дать проверить его в реестре BridgeUSA.",
-                    "Письменный договор с полной стоимостью: без доплат, возникающих по ходу.",
-                    "Сопровождение после прилёта: SSN, банк, связь, возврат налогов.",
+                    "Показать расчёт до оплаты — включая направления, от которых отговариваем.",
+                    "Оформить вторую работу заранее и через спонсора, чтобы она была законной.",
+                    "Назвать спонсора и дать проверить его в официальном реестре BridgeUSA.",
+                    "Опубликованную в долларах политику возврата, если визу не дадут.",
+                    "Подписанный оффер с названием работодателя и городом до финального платежа.",
                   ].map((item) => (
-                    <li key={item} className="flex gap-3 text-[0.95rem] leading-relaxed">
+                    <li
+                      key={item}
+                      className="flex gap-3 text-[0.95rem] leading-relaxed"
+                    >
                       <span
                         className="swat-num shrink-0"
                         style={{ color: "var(--color-stamp)" }}
@@ -288,11 +356,14 @@ export default function HomePage() {
                 <ul className="grid gap-4">
                   {[
                     "Гарантию визы. Решение принимает консул, и никто на него не влияет.",
-                    "Конкретную сумму заработка. Часы зависят от сезона, погоды и потока гостей.",
-                    "Что вторая работа будет. Её нужно согласовывать со спонсором отдельно.",
+                    "Запись на собеседование в срок. Мощность консульства ограничена не нами.",
+                    "Конкретную сумму заработка. Гарантировать можно часы в оффере, а не чаевые.",
                     "Самую низкую цену на рынке. Дёшево обычно значит, что за оффер платит кто-то другой.",
                   ].map((item) => (
-                    <li key={item} className="flex gap-3 text-[0.95rem] leading-relaxed">
+                    <li
+                      key={item}
+                      className="flex gap-3 text-[0.95rem] leading-relaxed"
+                    >
                       <span
                         className="swat-num shrink-0"
                         style={{ color: "var(--color-void)" }}
@@ -309,24 +380,23 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Лист ожидания */}
         <section id="waitlist" className="mx-auto max-w-6xl px-5 py-16">
           <div className="grid gap-10 lg:grid-cols-[1fr_1fr] lg:gap-16">
             <div>
               <h2 className="swat-h2">
                 Набор на сезон 2027
                 <br />
-                открывается осенью
+                стартует 1 сентября
               </h2>
               <p className="mt-5 max-w-lg leading-relaxed text-[var(--color-ink-soft)]">
-                Оставь контакт — напишем, когда появятся первые подтверждённые
-                офферы с полным расчётом. Без спама и без звонков с давлением:
-                одно сообщение, когда будет что показать.
+                Оставь контакт — напишем, когда появятся подтверждённые офферы
+                с полным расчётом. Без спама и без звонков с давлением: одно
+                сообщение, когда будет что показать.
               </p>
               <p className="swat-caption mt-6 leading-relaxed">
-                SWAT — независимый сервис расчёта. Мы не спонсор программы
-                и не работодатель. Размещение участников идёт через
-                назначенного спонсора BridgeUSA.
+                SWAT — независимый сервис расчёта. Мы не спонсор программы и не
+                работодатель. Размещение участников идёт через назначенного
+                спонсора BridgeUSA, и его имя мы называем до оплаты.
               </p>
             </div>
             <WaitlistForm />
@@ -340,7 +410,8 @@ export default function HomePage() {
           <p className="max-w-xl text-[0.8rem] leading-relaxed text-[var(--color-ink-faint)]">
             Расчёты на сайте — оценка, а не оффер и не налоговая консультация.
             Условия работы подтверждаются письменно работодателем и спонсором
-            до любой оплаты. Проверяй спонсора в официальном реестре BridgeUSA.
+            до любой оплаты. Проверяй спонсора в официальном реестре BridgeUSA
+            на j1visa.state.gov.
           </p>
         </div>
       </footer>

@@ -2,8 +2,11 @@ import { z } from "zod";
 import {
   FEDERAL_BRACKETS,
   FICA_RATE,
+  OBBBA_OVERTIME_DEDUCTION_CAP,
+  OBBBA_TIPS_DEDUCTION_CAP,
   STATE_CODES,
   STATES,
+  stateTax,
   taxByBrackets,
   type StateCode,
 } from "./states";
@@ -53,8 +56,15 @@ export const earningsInputSchema = z.object({
       programFee: z.number().min(0).max(20_000).default(0),
       /** Сбор SEVIS I-901. */
       sevisFee: z.number().min(0).max(1_000).default(0),
-      /** Консульский сбор за визу DS-160. */
+      /** Консульский сбор MRV за визу DS-160. */
       visaFee: z.number().min(0).max(1_000).default(0),
+      /**
+       * Visa Integrity Fee. Введён H.R.1 от 04.07.2025, минимум $250,
+       * не подлежит waiver. На июль 2026 внедряется пост за постом,
+       * правила Госдепа в Федеральном реестре ещё нет. Закладывается
+       * как контингенция, а не как подтверждённый факт.
+       */
+      integrityFee: z.number().min(0).max(1_000).default(0),
       /** Перелёт туда и обратно. */
       flights: z.number().min(0).max(10_000).default(0),
       /** Страховка на период программы. */
@@ -88,6 +98,8 @@ export interface EarningsResult {
     readonly total: number;
     /** Сколько студент НЕ платит благодаря освобождению от FICA. */
     readonly ficaSaved: number;
+    /** Сумма чаевых и надбавок за переработку, выведенная из-под федерального налога. */
+    readonly obbbaDeduction: number;
   };
   readonly living: {
     readonly housing: number;
@@ -140,12 +152,23 @@ export function calculateEarnings(rawInput: EarningsInput): EarningsResult {
   const grossSecondJob = secondJobWeekly * input.weeks;
   const grossTotal = grossBase + grossOvertime + grossTips + grossSecondJob;
 
+  // Вычеты OBBBA (налоговые годы 2025–2028, покрывают сезон 2027).
+  // Квалифицированной переработкой считается только надбавка сверх обычной
+  // ставки, то есть половина ставки, а не весь полуторный час.
+  const overtimePremium = overtimeHours * input.hourlyWage * 0.5 * input.weeks;
+  const obbbaDeduction =
+    Math.min(grossTips, OBBBA_TIPS_DEDUCTION_CAP) +
+    Math.min(overtimePremium, OBBBA_OVERTIME_DEDUCTION_CAP);
+
   // Сезонный заработок — единственный доход студента в США за налоговый год,
   // поэтому шкала применяется к нему напрямую, без годовой экстраполяции.
-  const federal = taxByBrackets(grossTotal, FEDERAL_BRACKETS);
-  const stateTax = taxByBrackets(grossTotal, state.incomeTaxBrackets);
+  const federalTaxable = Math.max(0, grossTotal - obbbaDeduction);
+  const federal = taxByBrackets(federalTaxable, FEDERAL_BRACKETS);
+  // Штаты в основном не следуют за федеральными вычетами OBBBA,
+  // поэтому налог штата считается от полного валового дохода.
+  const stateTaxDue = stateTax(grossTotal, state);
   const localTax = grossTotal * state.localTaxRate;
-  const taxTotal = federal + stateTax + localTax;
+  const taxTotal = federal + stateTaxDue + localTax;
 
   const housing = input.housingPerWeek * input.weeks;
   const food = input.foodPerWeek * input.weeks;
@@ -156,6 +179,7 @@ export function calculateEarnings(rawInput: EarningsInput): EarningsResult {
     input.upfront.programFee +
     input.upfront.sevisFee +
     input.upfront.visaFee +
+    input.upfront.integrityFee +
     input.upfront.flights +
     input.upfront.insurance;
 
@@ -179,10 +203,11 @@ export function calculateEarnings(rawInput: EarningsInput): EarningsResult {
     },
     taxes: {
       federal: round(federal),
-      state: round(stateTax),
+      state: round(stateTaxDue),
       local: round(localTax),
       total: round(taxTotal),
       ficaSaved: round(grossTotal * FICA_RATE),
+      obbbaDeduction: round(obbbaDeduction),
     },
     living: {
       housing: round(housing),
@@ -266,7 +291,7 @@ function buildWarnings(
   if (!state.hasOwnMinimum) {
     warnings.push({
       level: "info",
-      message: `У штата ${state.nameRu} нет своего минимума оплаты труда — действует федеральный $${state.minimumWage.toFixed(2)}. Ставку в оффере проверяй особенно внимательно.`,
+      message: `В ${state.nameRu} нет своего минимума оплаты труда — действует федеральный $${state.minimumWage.toFixed(2)}. Законной защиты снизу почти нет, ставку в оффере проверяй особенно внимательно.`,
     });
   }
 

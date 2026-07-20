@@ -1,20 +1,23 @@
 /**
  * Налоговые и зарплатные параметры штатов, где реально работают участники J-1 SWT.
  *
- * ВАЖНО про честность данных: каждое поле помечено источником и статусом проверки.
- * Продукт продаёт точность расчёта — значит непроверенное число не имеет права
- * выглядеть как проверенное. Всё, что `verified: false`, показывается в UI с оговоркой.
+ * Числа сверены с исследованием рынка от 20.07.2026
+ * (docs/2026-07-20-стратегический-брифинг.md). Поле `verified` отмечает,
+ * подтверждено ли значение первичным источником. Продукт продаёт точность
+ * расчёта — значит непроверенное число не имеет права выглядеть проверенным.
  */
 
 export const STATE_CODES = [
-  "NJ",
-  "MA",
   "MD",
-  "SC",
   "WI",
-  "AK",
-  "CO",
+  "SC",
+  "OH",
+  "FL",
+  "NJ",
   "TN",
+  "AK",
+  "MA",
+  "CO",
   "DE",
   "ME",
 ] as const;
@@ -23,7 +26,6 @@ export type StateCode = (typeof STATE_CODES)[number];
 
 /** Ступень прогрессивной шкалы: ставка действует на доход до `upTo` включительно. */
 export interface TaxBracket {
-  /** Верхняя граница ступени в долларах годового налогооблагаемого дохода. */
   readonly upTo: number;
   /** Ставка долей единицы: 0.05 = 5%. */
   readonly rate: number;
@@ -33,73 +35,34 @@ export interface StateProfile {
   readonly code: StateCode;
   readonly name: string;
   readonly nameRu: string;
-  /**
-   * Законный минимум оплаты труда на 2026 год.
-   * Там, где штат не установил свой минимум, действует федеральный $7.25.
-   */
+  /** Законный минимум оплаты труда, действующий летом 2027. */
   readonly minimumWage: number;
   /** Есть ли у штата собственный минимум выше федерального. */
   readonly hasOwnMinimum: boolean;
-  /** Ступени подоходного налога штата. Пустой массив = налога нет. */
+  /**
+   * Порог подачи декларации. Если валовый доход не превышает его,
+   * налог штата равен нулю. Превышение облагает доход по шкале целиком,
+   * а не только сумму сверх порога — это не нулевая ступень.
+   */
+  readonly filingThreshold: number;
+  /** Ступени подоходного налога штата. Пустой массив — налога нет. */
   readonly incomeTaxBrackets: readonly TaxBracket[];
-  /** Дополнительный местный налог (округ/город) долей единицы. */
+  /** Местный налог округа или города, долей единицы. */
   readonly localTaxRate: number;
-  readonly popularTowns: readonly string[];
-  /** Что здесь надо знать студенту до того, как он согласится. */
-  readonly reality: string;
   readonly verified: boolean;
 }
 
-/**
- * Федеральный минимум. Не менялся с 2009 года — и это ключ к пониманию,
- * почему в трёх «топовых» курортных штатах законный пол зарплаты втрое ниже,
- * чем на восточном побережье.
- */
+/** Федеральный минимум. Не менялся с 2009 года. */
 export const FEDERAL_MINIMUM_WAGE = 7.25;
 
 export const STATES: Readonly<Record<StateCode, StateProfile>> = {
-  NJ: {
-    code: "NJ",
-    name: "New Jersey",
-    nameRu: "Нью-Джерси",
-    minimumWage: 15.92,
-    hasOwnMinimum: true,
-    incomeTaxBrackets: [
-      { upTo: 20_000, rate: 0.014 },
-      { upTo: 35_000, rate: 0.0175 },
-      { upTo: Infinity, rate: 0.035 },
-    ],
-    localTaxRate: 0,
-    popularTowns: [
-      "Ocean City",
-      "Wildwood",
-      "Seaside Heights",
-      "Atlantic City",
-      "Cape May",
-    ],
-    reality:
-      "Высокий законный минимум и почти нулевой подоходный налог на сезонных доходах. Плотная застройка курортов даёт вторую работу в пешей доступности — главный источник переработки.",
-    verified: false,
-  },
-  MA: {
-    code: "MA",
-    name: "Massachusetts",
-    nameRu: "Массачусетс",
-    minimumWage: 15.0,
-    hasOwnMinimum: true,
-    incomeTaxBrackets: [{ upTo: Infinity, rate: 0.05 }],
-    localTaxRate: 0,
-    popularTowns: ["Cape Cod", "Hyannis", "Falmouth", "Provincetown", "Dennis"],
-    reality:
-      "Ставки выше среднего, но Кейп-Код — один из самых дорогих рынков аренды на сезон. Плоский налог 5% съедает больше, чем в соседних штатах.",
-    verified: false,
-  },
   MD: {
     code: "MD",
     name: "Maryland",
-    nameRu: "Мэриленд",
+    nameRu: "Мэриленде",
     minimumWage: 15.0,
     hasOwnMinimum: true,
+    filingThreshold: 0,
     incomeTaxBrackets: [
       { upTo: 1_000, rate: 0.02 },
       { upTo: 2_000, rate: 0.03 },
@@ -108,69 +71,80 @@ export const STATES: Readonly<Record<StateCode, StateProfile>> = {
       { upTo: Infinity, rate: 0.05 },
     ],
     localTaxRate: 0.0225,
-    popularTowns: ["Ocean City"],
-    reality:
-      "Ocean City — крупнейшая точка концентрации J-1 в стране: много работодателей и реальная конкуренция за часы. Нерезиденты платят дополнительный местный налог 2.25%.",
-    verified: false,
-  },
-  SC: {
-    code: "SC",
-    name: "South Carolina",
-    nameRu: "Южная Каролина",
-    minimumWage: FEDERAL_MINIMUM_WAGE,
-    hasOwnMinimum: false,
-    incomeTaxBrackets: [
-      { upTo: 3_560, rate: 0 },
-      { upTo: 17_830, rate: 0.03 },
-      { upTo: Infinity, rate: 0.062 },
-    ],
-    localTaxRate: 0,
-    popularTowns: ["Myrtle Beach"],
-    reality:
-      "Своего минимума у штата нет — действует федеральные $7.25. Рынок платит выше, но законной защиты снизу нет: ставку в оффере проверяй особенно придирчиво. Первые $3 560 дохода налогом штата не облагаются.",
     verified: false,
   },
   WI: {
     code: "WI",
     name: "Wisconsin",
-    nameRu: "Висконсин",
+    nameRu: "Висконсине",
     minimumWage: FEDERAL_MINIMUM_WAGE,
     hasOwnMinimum: false,
+    filingThreshold: 0,
     incomeTaxBrackets: [
       { upTo: 14_680, rate: 0.035 },
       { upTo: 29_370, rate: 0.044 },
       { upTo: Infinity, rate: 0.053 },
     ],
     localTaxRate: 0,
-    popularTowns: ["Wisconsin Dells", "Lake Delton"],
-    reality:
-      "Своего минимума нет, действуют федеральные $7.25. Wisconsin Dells — закрытая курортная экосистема: жильё обычно от работодателя, но и альтернатив рядом почти нет.",
     verified: false,
   },
-  AK: {
-    code: "AK",
-    name: "Alaska",
-    nameRu: "Аляска",
-    minimumWage: 14.0,
+  SC: {
+    code: "SC",
+    name: "South Carolina",
+    nameRu: "Южной Каролине",
+    minimumWage: FEDERAL_MINIMUM_WAGE,
+    hasOwnMinimum: false,
+    filingThreshold: 0,
+    incomeTaxBrackets: [
+      { upTo: 3_560, rate: 0 },
+      { upTo: 17_830, rate: 0.03 },
+      { upTo: Infinity, rate: 0.062 },
+    ],
+    localTaxRate: 0,
+    verified: false,
+  },
+  OH: {
+    code: "OH",
+    name: "Ohio",
+    nameRu: "Огайо",
+    minimumWage: 10.9,
     hasOwnMinimum: true,
+    filingThreshold: 0,
+    // Первая ступень Огайо нулевая до $26 050 — сезонный заработок в неё умещается.
+    incomeTaxBrackets: [
+      { upTo: 26_050, rate: 0 },
+      { upTo: 100_000, rate: 0.0275 },
+      { upTo: Infinity, rate: 0.035 },
+    ],
+    localTaxRate: 0,
+    verified: false,
+  },
+  FL: {
+    code: "FL",
+    name: "Florida",
+    nameRu: "Флориде",
+    minimumWage: 15.0,
+    hasOwnMinimum: true,
+    filingThreshold: 0,
     incomeTaxBrackets: [],
     localTaxRate: 0,
-    popularTowns: ["Anchorage", "Denali", "Seward", "Talkeetna"],
-    reality:
-      "Подоходного налога штата нет вообще — это плюс несколько сотен долларов к сезону по сравнению с Массачусетсом при той же ставке. Минус: самый дорогой перелёт и почти нет шансов на вторую работу.",
     verified: false,
   },
-  CO: {
-    code: "CO",
-    name: "Colorado",
-    nameRu: "Колорадо",
-    minimumWage: 15.16,
+  NJ: {
+    code: "NJ",
+    name: "New Jersey",
+    nameRu: "Нью-Джерси",
+    // Сезонный минимум ниже общего: у большинства курортных работодателей
+    // действует именно он.
+    minimumWage: 15.23,
     hasOwnMinimum: true,
-    incomeTaxBrackets: [{ upTo: Infinity, rate: 0.044 }],
+    filingThreshold: 10_000,
+    incomeTaxBrackets: [
+      { upTo: 20_000, rate: 0.014 },
+      { upTo: 35_000, rate: 0.0175 },
+      { upTo: Infinity, rate: 0.035 },
+    ],
     localTaxRate: 0,
-    popularTowns: ["Estes Park", "Aspen", "Vail", "Breckenridge"],
-    reality:
-      "Высокие ставки в горных городах, но жильё в Аспене и Вейле — самое дорогое из всех направлений. Без служебного жилья от работодателя сезон может уйти в минус.",
     verified: false,
   },
   TN: {
@@ -179,19 +153,53 @@ export const STATES: Readonly<Record<StateCode, StateProfile>> = {
     nameRu: "Теннесси",
     minimumWage: FEDERAL_MINIMUM_WAGE,
     hasOwnMinimum: false,
+    filingThreshold: 0,
     incomeTaxBrackets: [],
     localTaxRate: 0,
-    popularTowns: ["Gatlinburg", "Pigeon Forge", "Sevierville"],
-    reality:
-      "Подоходного налога штата нет — и это главный аргумент. Но своего минимума тоже нет: федеральные $7.25. Дешёвое жильё частично компенсирует более низкие ставки.",
+    verified: false,
+  },
+  AK: {
+    code: "AK",
+    name: "Alaska",
+    nameRu: "Аляске",
+    // Ballot Measure 1 поднимает минимум до $15.00 с 1 июля 2027 —
+    // то есть в середине сезона 2027.
+    minimumWage: 15.0,
+    hasOwnMinimum: true,
+    filingThreshold: 0,
+    incomeTaxBrackets: [],
+    localTaxRate: 0,
+    verified: false,
+  },
+  MA: {
+    code: "MA",
+    name: "Massachusetts",
+    nameRu: "Массачусетсе",
+    minimumWage: 15.0,
+    hasOwnMinimum: true,
+    filingThreshold: 8_000,
+    incomeTaxBrackets: [{ upTo: Infinity, rate: 0.05 }],
+    localTaxRate: 0,
+    verified: false,
+  },
+  CO: {
+    code: "CO",
+    name: "Colorado",
+    nameRu: "Колорадо",
+    minimumWage: 15.16,
+    hasOwnMinimum: true,
+    filingThreshold: 0,
+    incomeTaxBrackets: [{ upTo: Infinity, rate: 0.044 }],
+    localTaxRate: 0,
     verified: false,
   },
   DE: {
     code: "DE",
     name: "Delaware",
-    nameRu: "Делавэр",
+    nameRu: "Делавэре",
     minimumWage: 15.0,
     hasOwnMinimum: true,
+    filingThreshold: 0,
     incomeTaxBrackets: [
       { upTo: 2_000, rate: 0 },
       { upTo: 5_000, rate: 0.022 },
@@ -199,26 +207,21 @@ export const STATES: Readonly<Record<StateCode, StateProfile>> = {
       { upTo: Infinity, rate: 0.048 },
     ],
     localTaxRate: 0,
-    popularTowns: ["Rehoboth Beach", "Bethany Beach", "Fenwick Island"],
-    reality:
-      "Нет налога с продаж — экономия на всех бытовых покупках за сезон ощутима. Первые $2 000 дохода не облагаются налогом штата.",
     verified: false,
   },
   ME: {
     code: "ME",
     name: "Maine",
-    nameRu: "Мэн",
+    nameRu: "Мэне",
     minimumWage: 15.1,
     hasOwnMinimum: true,
+    filingThreshold: 0,
     incomeTaxBrackets: [
       { upTo: 26_800, rate: 0.058 },
       { upTo: 63_450, rate: 0.0675 },
       { upTo: Infinity, rate: 0.0715 },
     ],
     localTaxRate: 0,
-    popularTowns: ["Bar Harbor", "Old Orchard Beach"],
-    reality:
-      "Самая высокая нижняя ступень подоходного налога штата среди всех направлений — 5.8% с первого доллара. Короткий сезон: Бар-Харбор живёт примерно с июня по сентябрь.",
     verified: false,
   },
 };
@@ -228,10 +231,17 @@ export const STATE_LIST: readonly StateProfile[] = STATE_CODES.map(
 );
 
 /**
- * Федеральные ступени подоходного налога для нерезидента (single) на 2026 год.
+ * Федеральные ступени подоходного налога для нерезидента (single).
  *
- * Нерезидент по J-1 не получает стандартный вычет, поэтому налог считается
- * с первого доллара. Это отличает расчёт от привычного американцам.
+ * Нерезидент по J-1 не получает стандартный вычет — налог считается
+ * с первого доллара.
+ *
+ * ВАЖНО ПРО КАЗАХСТАН: у большинства стран Центральной Азии и Кавказа
+ * действует конвенция США–СССР 1973 года, освобождающая доход при
+ * пребывании менее 183 дней. У Казахстана собственный договор 1993 года,
+ * который дополнительно требует, чтобы работодатель не был резидентом США.
+ * Для американского сезонного работодателя это условие не выполняется,
+ * поэтому казахстанский студент платит федеральный налог, а узбекский — нет.
  */
 export const FEDERAL_BRACKETS: readonly TaxBracket[] = [
   { upTo: 12_400, rate: 0.1 },
@@ -240,13 +250,22 @@ export const FEDERAL_BRACKETS: readonly TaxBracket[] = [
 ];
 
 /**
+ * Потолки вычетов по OBBBA, действуют для налоговых лет 2025–2028
+ * и поэтому покрывают сезон 2027. Доступны нерезидентам через Schedule 1-A
+ * при наличии SSN. Для позиций с чаевыми и переработками уводят
+ * федеральную базу почти в ноль.
+ */
+export const OBBBA_TIPS_DEDUCTION_CAP = 25_000;
+export const OBBBA_OVERTIME_DEDUCTION_CAP = 12_500;
+
+/**
  * Ставка FICA (Social Security 6.2% + Medicare 1.45%), от которой участник
- * J-1 SWT в статусе нерезидента освобождён. Используется, чтобы показать
- * студенту размер льготы, а не чтобы списать деньги.
+ * J-1 SWT в статусе нерезидента освобождён по IRC 3121(b)(19).
+ * Используется, чтобы показать размер льготы, а не чтобы списать деньги.
  */
 export const FICA_RATE = 0.0765;
 
-/** Считает налог по прогрессивной шкале. Пустая шкала = налога нет. */
+/** Считает налог по прогрессивной шкале. Пустая шкала — налога нет. */
 export function taxByBrackets(
   income: number,
   brackets: readonly TaxBracket[],
@@ -264,4 +283,13 @@ export function taxByBrackets(
   }
 
   return tax;
+}
+
+/**
+ * Налог штата с учётом порога подачи декларации.
+ * Ниже порога налога нет вовсе; выше — облагается весь доход по шкале.
+ */
+export function stateTax(income: number, state: StateProfile): number {
+  if (income <= state.filingThreshold) return 0;
+  return taxByBrackets(income, state.incomeTaxBrackets);
 }

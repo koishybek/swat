@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { calculateEarnings, formatUsd, type EarningsInput } from "./earnings";
-import { FEDERAL_BRACKETS, taxByBrackets } from "./states";
+import { FEDERAL_BRACKETS, STATES, stateTax, taxByBrackets } from "./states";
 
 /** Базовый оффер: Теннесси выбран специально — там нет подоходного налога штата,
  *  поэтому федеральную часть видно в чистом виде. */
@@ -80,6 +80,45 @@ describe("calculateEarnings — налоги", () => {
     const result = calculateEarnings(offer({ stateCode: "MA" }));
 
     expect(result.taxes.state).toBe(420); // $8 400 × 5%
+  });
+
+  it("не берёт налог штата, пока доход ниже порога подачи декларации", () => {
+    // Нью-Джерси не облагает доход до $10 000. Это порог, а не нулевая
+    // ступень: при его превышении облагается весь доход целиком.
+    const below = calculateEarnings(
+      offer({ hourlyWage: 16, weeklyHours: 38, weeks: 10, stateCode: "NJ" }),
+    );
+    expect(below.gross.total).toBe(6_080);
+    expect(below.taxes.state).toBe(0);
+
+    const above = calculateEarnings(
+      offer({ hourlyWage: 16, weeklyHours: 40, weeks: 18, stateCode: "NJ" }),
+    );
+    expect(above.gross.total).toBe(11_520);
+    expect(above.taxes.state).toBeGreaterThan(0);
+  });
+
+  it("выводит чаевые и надбавку за переработку из-под федерального налога", () => {
+    // Вычеты OBBBA действуют для налоговых лет 2025–2028.
+    const withTips = calculateEarnings(
+      offer({ weeks: 10, tipsPerWeek: 200, stateCode: "TN" }),
+    );
+
+    expect(withTips.gross.tips).toBe(2_000);
+    expect(withTips.taxes.obbbaDeduction).toBe(2_000);
+    // Валовый $8 000, база после вычета $6 000 → федеральный $600, а не $800.
+    expect(withTips.gross.total).toBe(8_000);
+    expect(withTips.taxes.federal).toBe(600);
+  });
+
+  it("считает квалифицированной переработкой только надбавку, а не весь час", () => {
+    const result = calculateEarnings(
+      offer({ hourlyWage: 20, weeklyHours: 48, weeks: 10, stateCode: "TN" }),
+    );
+
+    // 8 сверхурочных часов × $20 × 0.5 надбавки × 10 недель.
+    expect(result.taxes.obbbaDeduction).toBe(800);
+    expect(result.gross.overtime).toBe(2_400);
   });
 
   it("добавляет местный налог для нерезидентов в Мэриленде", () => {
@@ -284,6 +323,71 @@ describe("taxByBrackets", () => {
   it("облагает каждую ступень по своей ставке, а не весь доход по верхней", () => {
     // Наивная ошибка дала бы 15000 × 12% = 1800.
     expect(taxByBrackets(15_000, FEDERAL_BRACKETS)).toBeCloseTo(1_552, 5);
+  });
+});
+
+describe("stateTax — порог подачи декларации", () => {
+  it("не облагает доход, равный порогу", () => {
+    expect(stateTax(10_000, STATES.NJ)).toBe(0);
+  });
+
+  it("облагает весь доход, а не только превышение над порогом", () => {
+    // Наивная реализация «нулевой ступени» дала бы (10 001 − 10 000) × 1.4%.
+    const tax = stateTax(10_001, STATES.NJ);
+    expect(tax).toBeCloseTo(10_001 * 0.014, 5);
+  });
+
+  it("работает без порога там, где его нет", () => {
+    expect(stateTax(8_400, STATES.MA)).toBe(420);
+    expect(stateTax(8_400, STATES.TN)).toBe(0);
+  });
+});
+
+describe("вторая работа — главный рычаг сезона", () => {
+  /** Побережье Мэриленда, 10 рабочих недель, реалистичные расходы. */
+  function coastal(secondJobHours: number): EarningsInput {
+    return {
+      hourlyWage: 15,
+      weeklyHours: 38,
+      weeks: 10,
+      tipsPerWeek: 90,
+      secondJobWage: 15,
+      secondJobHours,
+      housingPerWeek: 190,
+      foodPerWeek: 70,
+      transportPerWeek: 10,
+      stateCode: "MD",
+      upfront: {
+        programFee: 1_900,
+        sevisFee: 35,
+        visaFee: 185,
+        integrityFee: 250,
+        flights: 1_400,
+        insurance: 180,
+      },
+    };
+  }
+
+  it("с одной работой сезон на побережье выходит примерно в ноль", () => {
+    const result = calculateEarnings(coastal(0));
+
+    // Это и есть тезис продукта: одна работа — не заработок, а безубыток.
+    expect(result.netHome).toBeLessThan(600);
+  });
+
+  it("вторая работа меняет исход сильнее, чем любой выбор региона", () => {
+    const one = calculateEarnings(coastal(0));
+    const two = calculateEarnings(coastal(18));
+
+    expect(two.netHome - one.netHome).toBeGreaterThan(2_000);
+  });
+
+  it("предупреждает, что вторую работу надо согласовать до выхода на неё", () => {
+    const result = calculateEarnings(coastal(18));
+
+    expect(
+      result.warnings.some((w) => w.message.includes("согласовать со спонсором")),
+    ).toBe(true);
   });
 });
 
